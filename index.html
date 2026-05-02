@@ -18,7 +18,6 @@ h1{
     color:#4c6b3c;
 }
 
-/* タブ */
 .tabs{
     display:flex;
     justify-content:center;
@@ -40,7 +39,6 @@ h1{
     color:white;
 }
 
-/* カード */
 .card{
     background:white;
     margin:10px;
@@ -87,14 +85,13 @@ h1{
 
 <script>
 
-// ===== 日付保存 =====
+// ===== 保存（完全自動） =====
 function saveDate(house){
     const val = document.getElementById("date"+house).value;
     localStorage.setItem("house"+house, val);
-    render(currentTab);
 }
 
-// ===== 日数計算 =====
+// ===== 日数 =====
 function getDays(date){
     if(!date) return null;
     return Math.floor((new Date() - new Date(date)) / (1000*60*60*24));
@@ -102,6 +99,7 @@ function getDays(date){
 
 // ===== スケジュール =====
 function getSchedule(days){
+
     if(days == null){
         return [["未入力","交配日を入力してください","orange",0]];
     }
@@ -110,18 +108,18 @@ function getSchedule(days){
 
     // 温度
     if(days <=14) list.push(["温度","30℃管理","orange",0]);
-    if(days >=14 && days <=19) list.push(["温度","硬化期","orange",14]);
-    if(days >=19 && days <=45) list.push(["温度","通常管理","green",19]);
-    if(days >=45) list.push(["温度","仕上げ期","red",45]);
+    else if(days <=19) list.push(["温度","硬化期","orange",14]);
+    else if(days <=45) list.push(["温度","通常管理","green",19]);
+    else list.push(["温度","仕上げ期","red",45]);
 
     // 水
     if(days >=4 && days <=15) list.push(["水","多潅水","green",4]);
-    if(days >=15 && days <=30) list.push(["水","潅水控え","orange",15]);
-    if(days >=30 && days <=45) list.push(["水","少量多潅水","green",30]);
-    if(days >=45) list.push(["水","水切り","red",45]);
+    else if(days <=30) list.push(["水","潅水控え","orange",15]);
+    else if(days <=45) list.push(["水","少量多潅水","green",30]);
+    else list.push(["水","水切り","red",45]);
 
     // 作業
-    if(days >=53 && days <60) list.push(["作業","収穫準備","orange",53]);
+    if(days >=53 && days <60) list.push(["作業","収穫準備（あと"+(60-days)+"日）","orange",53]);
     if(days >=60) list.push(["作業","収穫","red",60]);
 
     return list;
@@ -138,6 +136,7 @@ function render(mode="today"){
     content.innerHTML="";
 
     for(let i=1;i<=3;i++){
+
         const date = localStorage.getItem("house"+i);
         const days = getDays(date);
         const schedule = getSchedule(days);
@@ -147,18 +146,18 @@ function render(mode="today"){
 
         let html = `
         <div class="house">ハウス${i}</div>
-        <input type="date" id="date${i}" value="${date||""}" onchange="saveDate(${i})">
+        <input type="date" id="date${i}" value="${date||""}" onchange="saveDate(${i});render(currentTab)">
         <div>交配後：${days!==null ? days+"日" : "-"}</div>
         `;
 
-        // ===== 今日 =====
+        // 今日
         if(mode==="today"){
             schedule.forEach(s=>{
                 html += row(s[1], s[2]);
             });
         }
 
-        // ===== 分類 =====
+        // 分類
         if(mode==="category"){
             const groups = {"温度":[], "水":[], "作業":[]};
 
@@ -176,7 +175,7 @@ function render(mode="today"){
             }
         }
 
-        // ===== 時系列 =====
+        // 時系列
         if(mode==="timeline"){
             schedule.sort((a,b)=>a[3]-b[3]);
             schedule.forEach(s=>{
@@ -193,7 +192,7 @@ function render(mode="today"){
     }
 }
 
-// ===== 行UI =====
+// 行UI
 function row(text,color){
     return `
     <div class="item">
@@ -202,7 +201,7 @@ function row(text,color){
     </div>`;
 }
 
-// ===== タブ切替（←ここ重要修正） =====
+// タブ
 function switchTab(e,mode){
     document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
     e.target.classList.add("active");
