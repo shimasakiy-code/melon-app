@@ -1,197 +1,116 @@
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メロン管理アプリ</title>
 
-<title>メロン管理</title>
-
-<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4CAF50">
 <link rel="apple-touch-icon" href="icon-192.png">
 
 <style>
-body { font-family: sans-serif; padding: 10px; text-align:center; }
-input,button { font-size:16px; padding:8px; margin:4px; }
-.card { margin-top:10px; padding:10px; border-radius:10px; }
-.h1 { background:#e3f2fd; }
-.h2 { background:#e8f5e9; }
-.h3 { background:#fff3e0; }
+body {
+  font-family: sans-serif;
+  padding: 15px;
+  background: #f5fff5;
+}
 
-.title { font-size:18px; font-weight:bold; }
-.item { margin:4px 0; }
+h1 {
+  text-align: center;
+}
 
-.high { color:red; font-size:18px; font-weight:bold; }
-.mid { color:orange; }
-.low { color:#333; }
+.box {
+  background: #ffffff;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+input {
+  font-size: 18px;
+  padding: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.result {
+  font-size: 20px;
+  margin-top: 10px;
+  font-weight: bold;
+}
 </style>
 </head>
 
 <body>
 
-<h2>メロン管理アプリ</h2>
+<h1>🍈 メロン交配管理</h1>
 
-<div>
-ハウス① <input type="date" id="d1"><br>
-ハウス② <input type="date" id="d2"><br>
-ハウス③ <input type="date" id="d3">
+<div class="box">
+  <h2>ハウス①</h2>
+  <input type="date" id="date1">
+  <div class="result" id="result1"></div>
 </div>
 
-<button onclick="setMode('today')">今日</button>
-<button onclick="setMode('group')">分類</button>
-<button onclick="setMode('timeline')">時系列</button>
+<div class="box">
+  <h2>ハウス②</h2>
+  <input type="date" id="date2">
+  <div class="result" id="result2"></div>
+</div>
 
-<div id="result"></div>
+<div class="box">
+  <h2>ハウス③</h2>
+  <input type="date" id="date3">
+  <div class="result" id="result3"></div>
+</div>
 
 <script>
-let mode="today";
+function calcDays(dateId, resultId, storageKey) {
+  const input = document.getElementById(dateId);
+  const result = document.getElementById(resultId);
 
-// 保存
-function save(){
-  ["d1","d2","d3"].forEach(id=>{
-    localStorage.setItem(id, document.getElementById(id).value);
-  });
-}
-
-// 読込
-function load(){
-  ["d1","d2","d3"].forEach(id=>{
-    document.getElementById(id).value = localStorage.getItem(id) || "";
-  });
-}
-
-// 入力で保存
-document.addEventListener("change", save);
-
-function setMode(m){
-  mode=m;
-  create();
-}
-
-function addDays(d,n){ let x=new Date(d); x.setDate(x.getDate()+n); return x;}
-function format(d){ return (d.getMonth()+1)+"/"+d.getDate();}
-function diff(a,b){ return Math.floor((a-b)/86400000);}
-function inRange(t,s,e){ return t>=s && t<=e;}
-
-function build(base){
-  let e=[];
-
-  // 作業
-  [
-    {n:"摘果",d:10,p:"mid"},
-    {n:"玉吊り",d:20,p:"mid"},
-    {n:"ネット開始",d:25,p:"low"},
-    {n:"収穫準備",d:53,p:"high"},
-    {n:"収穫",d:60,p:"high"}
-  ].forEach(x=>e.push({...x,date:addDays(base,x.d),type:"作業",single:true}));
-
-  // 水管理
-  e.push({n:"硬化期",start:addDays(base,14),end:addDays(base,19),type:"水",range:true,p:"mid"});
-  [
-    {n:"水切り①",d:15,p:"high"},
-    {n:"少量潅水",d:30,p:"low"},
-    {n:"水切り②",d:45,p:"high"}
-  ].forEach(x=>e.push({...x,date:addDays(base,x.d),type:"水",single:true}));
-
-  // 温度管理
-  [
-    {n:"30℃管理",s:0,e:14},
-    {n:"20℃管理",s:14,e:19},
-    {n:"普通管理",s:19,e:45}
-  ].forEach(x=>e.push({n:x.n,start:addDays(base,x.s),end:addDays(base,x.e),type:"温度",range:true,p:"low"}));
-
-  e.push({n:"糖度乗せ",start:addDays(base,45),type:"温度",after:true,p:"mid"});
-
-  return e;
-}
-
-function create(){
-  save();
-
-  let today=new Date();
-  let houses=[
-    {id:"d1",name:"ハウス①",cls:"h1"},
-    {id:"d2",name:"ハウス②",cls:"h2"},
-    {id:"d3",name:"ハウス③",cls:"h3"}
-  ];
-
-  let html="";
-
-  // 今日
-  if(mode==="today"){
-    html+="<div class='card'><div class='title'>今日やること</div>";
-    let none=true;
-
-    houses.forEach(h=>{
-      let v=document.getElementById(h.id).value;
-      if(!v)return;
-
-      let base=new Date(v);
-      let ev=build(base);
-
-      ev.forEach(x=>{
-        let show=false;
-
-        if(x.single && Math.abs(diff(today,x.date))<=1) show=true;
-        if(x.range && inRange(today,x.start,x.end)) show=true;
-        if(x.after && today>=x.start) show=true;
-
-        if(show){
-          html+=`<div class='${x.p}'>${h.name}：${x.n}</div>`;
-          none=false;
-        }
-      });
-    });
-
-    if(none) html+="特になし";
-    html+="</div>";
-    document.getElementById("result").innerHTML=html;
-    return;
+  // 保存データ読み込み
+  const savedDate = localStorage.getItem(storageKey);
+  if (savedDate) {
+    input.value = savedDate;
+    showDays(savedDate, result);
   }
 
-  // 分類 or 時系列
-  houses.forEach(h=>{
-    let v=document.getElementById(h.id).value;
-    if(!v)return;
+  // 入力時処理
+  input.addEventListener("change", () => {
+    const value = input.value;
 
-    let base=new Date(v);
-    let ev=build(base);
+    // 保存
+    localStorage.setItem(storageKey, value);
 
-    html+=`<div class='card ${h.cls}'><div class='title'>${h.name}</div>`;
-
-    if(mode==="group"){
-      ["作業","水","温度"].forEach(cat=>{
-        html+=`<div class='title'>■${cat}</div>`;
-        ev.filter(x=>x.type===cat).forEach(x=>{
-          if(x.single) html+=`<div>${x.n}：${format(x.date)}</div>`;
-          if(x.range) html+=`<div>${x.n}：${format(x.start)}〜${format(x.end)}</div>`;
-          if(x.after) html+=`<div>${x.n}開始：${format(x.start)}〜</div>`;
-        });
-      });
-    }
-
-    if(mode==="timeline"){
-      let tl=[];
-      ev.forEach(x=>{
-        if(x.single) tl.push({d:x.date,t:x.n});
-        if(x.range){ tl.push({d:x.start,t:x.n+"開始"}); tl.push({d:x.end,t:x.n+"終了"});}
-        if(x.after) tl.push({d:x.start,t:x.n+"開始"});
-      });
-
-      tl.sort((a,b)=>a.d-b.d);
-      tl.forEach(t=> html+=`<div>${format(t.d)}：${t.t}</div>`);
-    }
-
-    html+="</div>";
+    // 表示
+    showDays(value, result);
   });
-
-  document.getElementById("result").innerHTML=html;
 }
 
-load();
-create();
+// 日数計算
+function showDays(dateValue, result) {
+  const selectedDate = new Date(dateValue);
+  const today = new Date();
+
+  const diffTime = today - selectedDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays >= 0) {
+    result.textContent = "今日で " + diffDays + " 日目";
+  } else {
+    result.textContent = "未来の日付です";
+  }
+}
+
+// 各ハウス
+calcDays("date1", "result1", "house1");
+calcDays("date2", "result2", "house2");
+calcDays("date3", "result3", "house3");
 </script>
 
 </body>
 </html>
+```
