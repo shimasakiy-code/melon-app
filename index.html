@@ -183,6 +183,135 @@ function switchTab(mode){
 // 初期表示
 render();
 
+<script>
+
+// ===== 保存 =====
+function saveDate(house){
+    const val = document.getElementById("date"+house).value;
+    localStorage.setItem("house"+house, val);
+    render(currentTab);
+}
+
+// ===== 日数 =====
+function getDays(date){
+    if(!date) return null;
+    return Math.floor((new Date() - new Date(date)) / (1000*60*60*24));
+}
+
+// ===== スケジュール定義 =====
+function getSchedule(days){
+    if(days == null) return [];
+
+    let list = [];
+
+    // 温度
+    if(days <=14) list.push(["温度","30℃管理","orange",0]);
+    if(days >=14 && days <=19) list.push(["温度","硬化期","orange",14]);
+    if(days >=19 && days <=45) list.push(["温度","通常管理","green",19]);
+    if(days >=45) list.push(["温度","仕上げ期","red",45]);
+
+    // 水
+    if(days >=4 && days <=15) list.push(["水","多潅水","green",4]);
+    if(days >=15 && days <=30) list.push(["水","潅水控え","orange",15]);
+    if(days >=30 && days <=45) list.push(["水","少量多潅水","green",30]);
+    if(days >=45) list.push(["水","水切り","red",45]);
+
+    // 作業
+    if(days >=53 && days <60) list.push(["作業","収穫準備","orange",53]);
+    if(days >=60) list.push(["作業","収穫","red",60]);
+
+    return list;
+}
+
+// ===== タブ状態 =====
+let currentTab = "today";
+
+// ===== 描画 =====
+function render(mode="today"){
+    currentTab = mode;
+
+    const content = document.getElementById("content");
+    content.innerHTML="";
+
+    for(let i=1;i<=3;i++){
+        const date = localStorage.getItem("house"+i);
+        const days = getDays(date);
+        const schedule = getSchedule(days);
+
+        const card = document.createElement("div");
+        card.className="card";
+
+        let html = `
+        <div class="house">ハウス${i}</div>
+        <input type="date" id="date${i}" value="${date||""}" onchange="saveDate(${i})">
+        <div>交配後：${days!==null ? days+"日" : "-"}</div>
+        `;
+
+        // ===== 今日やること =====
+        if(mode==="today"){
+            schedule.forEach(s=>{
+                html += row(s[1], s[2]);
+            });
+        }
+
+        // ===== 分類 =====
+        if(mode==="category"){
+            const groups = {
+                "温度":[],
+                "水":[],
+                "作業":[]
+            };
+
+            schedule.forEach(s=>{
+                groups[s[0]].push(s);
+            });
+
+            for(let key in groups){
+                if(groups[key].length){
+                    html += `<div style="margin-top:10px;font-weight:bold;">${key}</div>`;
+                    groups[key].forEach(s=>{
+                        html += row(s[1], s[2]);
+                    });
+                }
+            }
+        }
+
+        // ===== 時系列 =====
+        if(mode==="timeline"){
+            schedule.sort((a,b)=>a[3]-b[3]);
+            schedule.forEach(s=>{
+                html += `
+                <div class="item">
+                    <div>交配後${s[3]}日：${s[1]}</div>
+                    <div class="badge ${s[2]}"></div>
+                </div>`;
+            });
+        }
+
+        card.innerHTML = html;
+        content.appendChild(card);
+    }
+}
+
+// ===== 行UI =====
+function row(text,color){
+    return `
+    <div class="item">
+        <div>${text}</div>
+        <div class="badge ${color}"></div>
+    </div>`;
+}
+
+// ===== タブ切替 =====
+function switchTab(mode){
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    event.target.classList.add("active");
+    render(mode);
+}
+
+// 初期表示
+render("today");
+
 </script>
 
 </body>
