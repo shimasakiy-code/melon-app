@@ -77,14 +77,12 @@ h1{
 
 <h1>🌱 メロン管理</h1>
 
-<!-- タブ -->
 <div class="tabs">
-<button class="tab active" onclick="switchTab('today')">今日やること</button>
-<button class="tab" onclick="switchTab('category')">分類</button>
-<button class="tab" onclick="switchTab('timeline')">時系列</button>
+<button class="tab active" onclick="switchTab(event,'today')">今日やること</button>
+<button class="tab" onclick="switchTab(event,'category')">分類</button>
+<button class="tab" onclick="switchTab(event,'timeline')">時系列</button>
 </div>
 
-<!-- 表示エリア -->
 <div id="content"></div>
 
 <script>
@@ -93,114 +91,20 @@ h1{
 function saveDate(house){
     const val = document.getElementById("date"+house).value;
     localStorage.setItem("house"+house, val);
-    render();
+    render(currentTab);
 }
 
 // ===== 日数計算 =====
 function getDays(date){
     if(!date) return null;
-    const start = new Date(date);
-    const today = new Date();
-    const diff = (today - start) / (1000*60*60*24);
-    return Math.floor(diff);
-}
-
-// ===== 今日やること生成 =====
-function getTasks(days){
-    if(days == null) return [];
-
-    let tasks=[];
-
-    if(days <=14) tasks.push(["30℃管理","orange"]);
-    if(days >=14 && days <=19) tasks.push(["硬化期","orange"]);
-    if(days >=19 && days <=45) tasks.push(["通常管理","green"]);
-    if(days >=45) tasks.push(["仕上げ期","red"]);
-
-    if(days >=4 && days <=15) tasks.push(["多潅水","green"]);
-    if(days >=15 && days <=30) tasks.push(["潅水控え","orange"]);
-    if(days >=30 && days <=45) tasks.push(["少量多潅水","green"]);
-    if(days >=45) tasks.push(["水切り","red"]);
-
-    if(days >=53 && days <60) tasks.push(["収穫準備","orange"]);
-    if(days >=60) tasks.push(["収穫","red"]);
-
-    return tasks;
-}
-
-// ===== 描画 =====
-function render(){
-    const content = document.getElementById("content");
-    content.innerHTML="";
-
-    for(let i=1;i<=3;i++){
-        const date = localStorage.getItem("house"+i);
-        const days = getDays(date);
-
-        const card = document.createElement("div");
-        card.className="card";
-
-        let html = `
-        <div class="house">ハウス${i}</div>
-        <input type="date" id="date${i}" value="${date||""}" onchange="saveDate(${i})">
-        <div>交配後：${days!==null ? days+"日" : "-"}</div>
-        `;
-
-        const tasks = getTasks(days);
-
-        tasks.forEach(t=>{
-            html += `
-            <div class="item">
-                <div>${t[0]}</div>
-                <div class="badge ${t[1]}">${t[0]}</div>
-            </div>`;
-        });
-
-        card.innerHTML = html;
-        content.appendChild(card);
-    }
-}
-
-// ===== タブ切り替え =====
-function switchTab(mode){
-    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-    event.target.classList.add("active");
-
-    if(mode === "today"){
-        render();
-    }
-
-    if(mode === "category"){
-        document.getElementById("content").innerHTML =
-        "<div class='card'>分類表示（ここは後で強化できる）</div>";
-    }
-
-    if(mode === "timeline"){
-        document.getElementById("content").innerHTML =
-        "<div class='card'>時系列表示（ここも後で強化）</div>";
-    }
-}
-
-// 初期表示
-render();
-
-<script>
-
-// ===== 保存 =====
-function saveDate(house){
-    const val = document.getElementById("date"+house).value;
-    localStorage.setItem("house"+house, val);
-    render(currentTab);
-}
-
-// ===== 日数 =====
-function getDays(date){
-    if(!date) return null;
     return Math.floor((new Date() - new Date(date)) / (1000*60*60*24));
 }
 
-// ===== スケジュール定義 =====
+// ===== スケジュール =====
 function getSchedule(days){
-    if(days == null) return [];
+    if(days == null){
+        return [["未入力","交配日を入力してください","orange",0]];
+    }
 
     let list = [];
 
@@ -223,7 +127,7 @@ function getSchedule(days){
     return list;
 }
 
-// ===== タブ状態 =====
+// ===== 状態 =====
 let currentTab = "today";
 
 // ===== 描画 =====
@@ -247,7 +151,7 @@ function render(mode="today"){
         <div>交配後：${days!==null ? days+"日" : "-"}</div>
         `;
 
-        // ===== 今日やること =====
+        // ===== 今日 =====
         if(mode==="today"){
             schedule.forEach(s=>{
                 html += row(s[1], s[2]);
@@ -256,14 +160,10 @@ function render(mode="today"){
 
         // ===== 分類 =====
         if(mode==="category"){
-            const groups = {
-                "温度":[],
-                "水":[],
-                "作業":[]
-            };
+            const groups = {"温度":[], "水":[], "作業":[]};
 
             schedule.forEach(s=>{
-                groups[s[0]].push(s);
+                if(groups[s[0]]) groups[s[0]].push(s);
             });
 
             for(let key in groups){
@@ -302,10 +202,10 @@ function row(text,color){
     </div>`;
 }
 
-// ===== タブ切替 =====
-function switchTab(mode){
+// ===== タブ切替（←ここ重要修正） =====
+function switchTab(e,mode){
     document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-    event.target.classList.add("active");
+    e.target.classList.add("active");
     render(mode);
 }
 
