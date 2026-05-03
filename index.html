@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html lang="ja">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>メロン管理</title>
+
+<!-- PWA & iPhoneアイコン -->
+<link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <style>
 body{
@@ -31,7 +37,6 @@ h1{
     border:none;
     background:#dfe5d8;
     font-weight:bold;
-    cursor:pointer;
 }
 
 .tab.active{
@@ -85,16 +90,25 @@ h1{
 
 <script>
 
-// ===== 保存（完全自動） =====
+// ===== 日付保存 =====
 function saveDate(house){
     const val = document.getElementById("date"+house).value;
     localStorage.setItem("house"+house, val);
 }
 
-// ===== 日数 =====
+// ===== 日数計算（ズレ防止版） =====
 function getDays(date){
     if(!date) return null;
-    return Math.floor((new Date() - new Date(date)) / (1000*60*60*24));
+
+    const today = new Date();
+    const start = new Date(date);
+
+    today.setHours(0,0,0,0);
+    start.setHours(0,0,0,0);
+
+    const diff = (today - start) / (1000*60*60*24);
+
+    return Math.max(0, Math.floor(diff));
 }
 
 // ===== スケジュール =====
@@ -192,7 +206,7 @@ function render(mode="today"){
     }
 }
 
-// 行UI
+// ===== 行UI =====
 function row(text,color){
     return `
     <div class="item">
@@ -201,15 +215,44 @@ function row(text,color){
     </div>`;
 }
 
-// タブ
+// ===== タブ切替 =====
 function switchTab(e,mode){
     document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
     e.target.classList.add("active");
     render(mode);
 }
 
-// 初期表示
+// ===== 0時更新 =====
+function scheduleMidnightUpdate(){
+
+    const now = new Date();
+    const next = new Date();
+
+    next.setDate(now.getDate()+1);
+    next.setHours(0,0,0,0);
+
+    const ms = next - now;
+
+    setTimeout(() => {
+        render(currentTab);
+
+        setInterval(() => {
+            render(currentTab);
+        }, 24 * 60 * 60 * 1000);
+
+    }, ms);
+}
+
+// ===== 復帰時更新 =====
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        render(currentTab);
+    }
+});
+
+// 初期
 render("today");
+scheduleMidnightUpdate();
 
 </script>
 
